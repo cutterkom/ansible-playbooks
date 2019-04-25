@@ -1,0 +1,38 @@
+---
+  - name: Install R
+    apt:
+      name: r-base
+      state: latest
+  - name: Change permissions on linux, in order to install R packages system-wide
+    file: 
+      path: /usr/local/lib/R/site-library
+      mode: 0777
+      recurse: yes
+  - name: Change directory for packages, which should be installed system-wide and then install them
+    command: Rscript -e ".libPaths('/usr/local/lib/R/site-library/')" -e "if (! ('{{item}}' %in% installed.packages()[,'Package'])) install.packages(pkgs='{{item}}', repos='https://ftp.fau.de/cran', dependencies=TRUE)"
+    with_items:
+      - dplyr
+      - ggplot2
+      - jsonlite
+      - shiny
+  - name: Create a ShinyApps directory
+    file:
+      path: ~/ShinyApps
+      state: directory
+  - name: Download Shiny Server
+    get_url: 
+      url: https://download3.rstudio.org/ubuntu-14.04/x86_64/shiny-server-1.5.9.923-amd64.deb
+      dest: ~/ShinyApps/shiny-server-1.5.9.923-amd64.deb
+  - name: Install Shiny Server
+    apt: 
+      deb: ~/ShinyApps/shiny-server-1.5.9.923-amd64.deb
+  - name: Delete existing default shiny-server conf
+    file:
+      path: /etc/shiny-server/shiny-server.conf
+      state: absent
+  - name: Allow users to host Shiny Apps in their home directory by overwriting default config
+    shell: /opt/shiny-server/bin/deploy-example user-dirs
+  - name: Copy sample apps in users local shiny directory
+    copy: 
+      src: /opt/shiny-server/samples/sample-apps/hello
+      dest: ~/ShinyApps
